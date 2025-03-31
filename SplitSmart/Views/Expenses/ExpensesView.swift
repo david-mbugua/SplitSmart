@@ -1,52 +1,91 @@
 import SwiftUI
+import SwiftData
 
 struct ExpensesView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\Expense.date, order: .reverse)]) private var expenses: [Expense]
     @State private var showingAddExpense = false
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Monthly Overview Card
-                    MonthlyOverviewCard(
-                        spent: 850,
-                        budget: 1500
+        NavigationStack {
+            ZStack {
+                if expenses.isEmpty {
+                    ContentUnavailableView(
+                        "No Expenses",
+                        systemImage: "dollarsign.circle",
+                        description: Text("Tap the + button to add your first expense")
                     )
-                    
-                    // Quick Add Button
-                    Button {
-                        showingAddExpense = true
-                    } label: {
-                        Label("Add Expense", systemImage: "plus")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .primaryButton()
-                    
-                    // Recent Expenses
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Recent Expenses")
-                            .headingStyle()
-                        
-                        ForEach(ExpenseCategory.mockExpenses) { expense in
-                            ExpenseRow(expense: expense)
+                } else {
+                    List {
+                        ForEach(expenses) { expense in
+                            ExpenseRowView(expense: expense)
                         }
+                        .onDelete(perform: deleteExpenses)
                     }
-                    .cardStyle()
                 }
-                .padding()
             }
-            .background(Color.backgroundPrimary)
             .navigationTitle("Expenses")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { showingAddExpense.toggle() }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
             .sheet(isPresented: $showingAddExpense) {
                 AddExpenseView()
+                    .onDisappear {
+                        print("DEBUG: AddExpenseView disappeared")
+                        // Try to manually fetch expenses
+                        do {
+                            let descriptor = FetchDescriptor<Expense>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+                            let fetchedExpenses = try modelContext.fetch(descriptor)
+                            print("DEBUG: Manually fetched \(fetchedExpenses.count) expenses after adding:")
+                            fetchedExpenses.forEach { expense in
+                                print("DEBUG: - \(expense.title): $\(expense.amount)")
+                            }
+                        } catch {
+                            print("DEBUG: Error fetching expenses: \(error)")
+                        }
+                    }
             }
+            .onAppear {
+                print("DEBUG: ExpensesView appeared")
+                print("DEBUG: Current expenses count: \(expenses.count)")
+            }
+        }
+    }
+    
+    private func deleteExpenses(offsets: IndexSet) {
+        withAnimation {
+            offsets.map { expenses[$0] }.forEach(modelContext.delete)
         }
     }
 }
 
-struct ExpensesView_Previews: PreviewProvider {
-    static var previews: some View {
-        ExpensesView()
-            .environmentObject(ThemeManager())
+struct ExpenseRowView: View {
+    let expense: Expense
+    
+    var body: some View {
+        NavigationLink(destination: ExpenseDetailView(expense: expense)) {
+            HStack {
+                Image(systemName: expense.category.icon)
+                    .foregroundColor(.accentColor)
+                
+                VStack(alignment: .leading) {
+                    Text(expense.title)
+                        .font(.headline)
+                    Text(expense.category.rawValue)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Text(expense.amount, format: .currency(code: "USD"))
+                    .bold()
+            }
+            .padding(.vertical, 8)
+        }
     }
 }

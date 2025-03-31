@@ -18,74 +18,26 @@ struct ScanReceiptView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                // Scan Options
-                HStack(spacing: 20) {
-                    ScanOptionButton(
-                        title: "Camera",
-                        icon: "camera.fill",
-                        action: { showingDocumentScanner = true }
+            ScrollView {
+                VStack(spacing: 20) {
+                    ScanOptionsView(
+                        showingDocumentScanner: $showingDocumentScanner,
+                        showingImagePicker: $showingImagePicker
                     )
                     
-                    ScanOptionButton(
-                        title: "Photo Library",
-                        icon: "photo.fill",
-                        action: { showingImagePicker = true }
-                    )
-                }
-                
-                if let receipt = scannedReceipt {
-                    // Show scanned receipt details
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            if let imageData = receipt.imageData,
-                               let uiImage = UIImage(data: imageData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(height: 200)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                            }
-                            
-                            // Receipt Details
-                            VStack(alignment: .leading, spacing: 12) {
-                                if let merchantName = receipt.merchantName {
-                                    Text(merchantName)
-                                        .font(.title2.bold())
-                                }
-                                
-                                if let date = receipt.date {
-                                    Text(date.formatted(date: .long, time: .omitted))
-                                        .foregroundStyle(.secondary)
-                                }
-                                
-                                if let total = receipt.totalAmount {
-                                    Text("Total: \(total as NSDecimalNumber, format: .currency(code: "USD"))")
-                                        .font(.headline)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color.Card.background)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            
-                            // Items List
-                            if !receipt.items.isEmpty {
-                                ItemsListView(items: receipt.items)
-                            }
-                        }
-                        .padding()
+                    if let receipt = scannedReceipt {
+                        ScannedReceiptView(receipt: receipt)
+                    } else if isProcessing {
+                        ProgressView("Processing receipt...")
+                    } else {
+                        ContentUnavailableView(
+                            "Scan a Receipt",
+                            systemImage: "doc.text.viewfinder",
+                            description: Text("Use your camera or choose a photo to scan a receipt")
+                        )
                     }
-                } else if isProcessing {
-                    ProgressView("Processing receipt...")
-                } else {
-                    // Initial state
-                    ContentUnavailableView(
-                        "Scan a Receipt",
-                        systemImage: "doc.text.viewfinder",
-                        description: Text("Use your camera or choose a photo to scan a receipt")
-                    )
                 }
+                .padding()
             }
             .navigationTitle("Scan Receipt")
             .navigationBarTitleDisplayMode(.inline)
@@ -103,15 +55,8 @@ struct ScanReceiptView: View {
                 }
             }
             .sheet(isPresented: $showingDocumentScanner) {
-                DocumentScannerView { result in
-                    switch result {
-                    case .success(let scan):
-                        Task {
-                            await processScannedImages(scan.images)
-                        }
-                    case .failure(let error):
-                        showError(error.localizedDescription)
-                    }
+                VNDocumentCameraView { result in
+                    handleScanResult(result)
                 }
             }
             .photosPicker(isPresented: $showingImagePicker, selection: $selectedImage)
@@ -125,6 +70,18 @@ struct ScanReceiptView: View {
             } message: {
                 Text(errorMessage)
             }
+        }
+    }
+    
+    private func handleScanResult(_ result: Result<VNDocumentCameraScan, Error>) {
+        switch result {
+        case .success(let scan):
+            Task {
+                let images = (0..<scan.pageCount).map { scan.imageOfPage(at: $0) }
+                await processScannedImages(images)
+            }
+        case .failure(let error):
+            showError(error.localizedDescription)
         }
     }
     
@@ -182,6 +139,70 @@ struct ScanReceiptView: View {
     }
 }
 
+// MARK: - Subviews
+private struct ScanOptionsView: View {
+    @Binding var showingDocumentScanner: Bool
+    @Binding var showingImagePicker: Bool
+    
+    var body: some View {
+        HStack(spacing: 20) {
+            ScanOptionButton(
+                title: "Camera",
+                icon: "camera.fill",
+                action: { showingDocumentScanner = true }
+            )
+            
+            ScanOptionButton(
+                title: "Photo Library",
+                icon: "photo.fill",
+                action: { showingImagePicker = true }
+            )
+        }
+    }
+}
+
+private struct ScannedReceiptView: View {
+    let receipt: ScannedReceipt
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let imageData = receipt.imageData,
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            
+            VStack(alignment: .leading, spacing: 12) {
+                if let merchantName = receipt.merchantName {
+                    Text(merchantName)
+                        .font(.title2.bold())
+                }
+                
+                if let date = receipt.date {
+                    Text(date.formatted(date: .long, time: .omitted))
+                        .foregroundStyle(.secondary)
+                }
+                
+                if let total = receipt.totalAmount {
+                    Text("Total: \((total as NSDecimalNumber) as Decimal.FormatStyle.Currency.FormatInput, format: .currency(code: "USD"))")
+                        .font(.headline)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(Color.Card.background)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            
+            if !receipt.items.isEmpty {
+                ItemsListView(items: receipt.items)
+            }
+        }
+    }
+}
+
 struct ScanOptionButton: View {
     let title: String
     let icon: String
@@ -225,7 +246,7 @@ struct ItemsListView: View {
                     
                     Spacer()
                     
-                    Text(item.amount as NSDecimalNumber, format: .currency(code: "USD"))
+                    Text(item.amount, format: .currency(code: "USD"))
                         .font(.subheadline.monospaced())
                 }
                 .padding(.vertical, 4)
@@ -234,5 +255,43 @@ struct ItemsListView: View {
         .padding()
         .background(Color.Card.background)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct VNDocumentCameraView: UIViewControllerRepresentable {
+    let completion: (Result<VNDocumentCameraScan, Error>) -> Void
+    
+    func makeUIViewController(context: Context) -> VNDocumentCameraViewController {
+        let scannerViewController = VNDocumentCameraViewController()
+        scannerViewController.delegate = context.coordinator
+        return scannerViewController
+    }
+    
+    func updateUIViewController(_ uiViewController: VNDocumentCameraViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(completion: completion)
+    }
+    
+    class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
+        let completion: (Result<VNDocumentCameraScan, Error>) -> Void
+        
+        init(completion: @escaping (Result<VNDocumentCameraScan, Error>) -> Void) {
+            self.completion = completion
+        }
+        
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFinishWith scan: VNDocumentCameraScan) {
+            controller.dismiss(animated: true)
+            completion(.success(scan))
+        }
+        
+        func documentCameraViewController(_ controller: VNDocumentCameraViewController, didFailWithError error: Error) {
+            controller.dismiss(animated: true)
+            completion(.failure(error))
+        }
+        
+        func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+            controller.dismiss(animated: true)
+        }
     }
 }

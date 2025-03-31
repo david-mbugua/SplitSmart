@@ -1,11 +1,11 @@
 import Foundation
+import SwiftUI
 
-@Observable
-class PaymentService {
+class PaymentService: ObservableObject {
     static let shared = PaymentService()
     
-    var availablePaymentMethods: [PaymentMethod] = []
-    var linkedAccounts: [PaymentAccount] = []
+    @Published var availablePaymentMethods: [PaymentMethod] = []
+    @Published var linkedAccounts: [PaymentAccount] = []
     
     private init() {
         loadPaymentMethods()
@@ -73,22 +73,40 @@ class PaymentService {
     }
 }
 
-struct PaymentMethod: Identifiable {
+struct PaymentMethod: Identifiable, Hashable {
     let id: String
     let name: String
     let icon: String
     let color: Color
     let isAvailable: Bool
+    
+    // Implement Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: PaymentMethod, rhs: PaymentMethod) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
-struct PaymentAccount: Identifiable {
+struct PaymentAccount: Identifiable, Hashable {
     let id: UUID
     let methodId: String
     let accountIdentifier: String
     let isVerified: Bool
+    
+    // Implement Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: PaymentAccount, rhs: PaymentAccount) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
-struct PaymentTransaction: Identifiable {
+struct PaymentTransaction: Identifiable, Hashable {
     let id: UUID
     let amount: Decimal
     let fromUser: String
@@ -97,9 +115,18 @@ struct PaymentTransaction: Identifiable {
     let status: TransactionStatus
     let timestamp: Date
     
-    enum TransactionStatus: String {
+    enum TransactionStatus: String, Hashable {
         case pending
         case completed
         case failed
+    }
+    
+    // Implement Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: PaymentTransaction, rhs: PaymentTransaction) -> Bool {
+        lhs.id == rhs.id
     }
 }

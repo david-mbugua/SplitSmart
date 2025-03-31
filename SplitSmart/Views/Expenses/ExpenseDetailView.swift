@@ -21,7 +21,7 @@ struct ExpenseDetailView: View {
                     Text(expense.title)
                         .font(.title2.bold())
                     
-                    Text((expense.amount as NSDecimalNumber), format: .currency(code: "USD"))
+                    Text(expense.amount, format: .currency(code: "USD"))
                         .font(.title.bold())
                         .foregroundStyle(expense.category.color)
                 }
@@ -32,7 +32,7 @@ struct ExpenseDetailView: View {
                 
                 // Details
                 VStack(alignment: .leading, spacing: 16) {
-                    detailSection("Date", value: expense.date.formatted(date: .long, time: .none))
+                    detailSection("Date", value: expense.date.formatted(date: .long, time: .omitted))
                     detailSection("Category", value: expense.category.rawValue)
                     
                     if expense.isRecurring {

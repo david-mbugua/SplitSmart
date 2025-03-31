@@ -1,9 +1,9 @@
 import Foundation
 import Vision
 import VisionKit
+import SwiftUI
 
-@Observable
-class ReceiptScannerService {
+class ReceiptScannerService: ObservableObject {
     static let shared = ReceiptScannerService()
     
     private let queue = DispatchQueue(label: "com.splitsmart.receiptscan")
@@ -122,12 +122,14 @@ class ReceiptScannerService {
             return nil
         }
         
-        let descriptionRange = Range(match.range(at: 1), in: text)
-        let amountRange = Range(match.range(at: 2), in: text)
+        let nsString = text as NSString
+        let descriptionRange = match.range(at: 1)
+        let amountRange = match.range(at: 2)
         
-        guard let description = descriptionRange.map({ String(text[$0]) }),
-              let amountString = amountRange.map({ String(text[$0]) }),
-              let amount = Decimal(string: amountString) else {
+        let description = nsString.substring(with: descriptionRange)
+        let amountString = nsString.substring(with: amountRange)
+        
+        guard let amount = Decimal(string: amountString) else {
             return nil
         }
         
@@ -138,12 +140,14 @@ class ReceiptScannerService {
         let pattern = "\\$?(\\d+\\.\\d{2})"
         
         guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let range = Range(match.range(at: 1), in: text) else {
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else {
             return nil
         }
         
-        let amountString = String(text[range])
+        let nsString = text as NSString
+        let amountRange = match.range(at: 1)
+        let amountString = nsString.substring(with: amountRange)
+        
         return Decimal(string: amountString)
     }
 }

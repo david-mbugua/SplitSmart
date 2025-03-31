@@ -38,7 +38,7 @@ struct MonthlyOverviewCard: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
-                            .fill(Color.backgroundSecondary)
+                            .fill(Color.Background.secondary)
                             .frame(height: 8)
                             .cornerRadius(4)
                         

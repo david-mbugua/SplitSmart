@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import Charts
 
 struct SmartAnalysisView: View {
@@ -67,7 +68,7 @@ struct SmartAnalysisView: View {
                 dayOfWeek: .friday
             ),
             SpendingPattern(
-                category: .transport,
+                category: .transportation,
                 frequency: 20.0,
                 averageAmount: 15.0,
                 timeOfDay: .morning,
@@ -139,9 +140,9 @@ struct PatternsSectionView: View {
                             .font(.subheadline.bold())
                     }
                     
-                    Text("Usually \(pattern.frequency, format: .number(style: .decimal)) times per month")
+                    Text("Usually \(String(format: "%.1f", pattern.frequency)) times per month")
                         .font(.caption)
-                    Text("Average amount: \(pattern.averageAmount as NSDecimalNumber, format: .currency(code: "USD"))")
+                    Text("Average amount: \(pattern.averageAmount, format: .currency(code: "USD"))")
                         .font(.caption)
                     Text("Most common: \(pattern.dayOfWeek.rawValue)s in the \(pattern.timeOfDay.rawValue)")
                         .font(.caption)

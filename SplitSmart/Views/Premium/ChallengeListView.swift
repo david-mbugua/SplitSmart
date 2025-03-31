@@ -35,7 +35,7 @@ struct ChallengeCellView: View {
     
     var progress: Double {
         let totalSaved = challenge.progress.reduce(0) { $0 + $1.amount }
-        return Double(totalSaved / challenge.targetAmount as NSDecimalNumber)
+        return NSDecimalNumber(decimal: totalSaved / challenge.targetAmount).doubleValue
     }
     
     var body: some View {
@@ -44,7 +44,7 @@ struct ChallengeCellView: View {
                 .font(.headline)
             
             HStack {
-                Text(challenge.targetAmount as NSDecimalNumber, format: .currency(code: "USD"))
+                Text(challenge.targetAmount, format: .currency(code: "USD"))
                     .font(.subheadline.bold())
                 Spacer()
                 Text("\(Int(progress * 100))%")

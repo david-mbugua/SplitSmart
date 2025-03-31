@@ -4,24 +4,22 @@ struct ExpenseRow: View {
     let expense: Expense
     
     var body: some View {
-        HStack(spacing: 16) {
-            Circle()
-                .fill(expense.category.color)
-                .frame(width: 40, height: 40)
-                .overlay(expense.category.icon.foregroundColor(.white))
+        HStack {
+            Image(systemName: expense.category.icon)
+                .foregroundStyle(expense.category.color)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading) {
                 Text(expense.title)
                     .font(.headline)
                 Text(expense.category.rawValue)
                     .font(.subheadline)
-                    .foregroundColor(Color.Text.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             Spacer()
             
             Text(expense.amount, format: .currency(code: "USD"))
-                .font(.headline)
+                .bold()
         }
         .padding(.vertical, 8)
     }

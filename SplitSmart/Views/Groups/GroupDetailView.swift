@@ -5,10 +5,17 @@ struct GroupDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    let group: Group
+    @Bindable private var group: Group
+    @StateObject private var premiumManager = PremiumManager.shared
+    
     @State private var showingEditSheet = false
     @State private var showingDeleteAlert = false
     @State private var showingAddExpense = false
+    @State private var showingQuickSplit = false
+    
+    init(group: Group) {
+        self.group = group
+    }
     
     var body: some View {
         ScrollView {
@@ -16,7 +23,7 @@ struct GroupDetailView: View {
                 // Header
                 VStack(spacing: 12) {
                     Circle()
-                        .fill(Color.Brand.sapphire)
+                        .fill(groupColor)
                         .frame(width: 60, height: 60)
                         .overlay {
                             Image(systemName: "person.3.fill")
@@ -38,6 +45,10 @@ struct GroupDetailView: View {
                 // Members
                 GroupMembersView(members: group.members)
                 
+                // Balance section
+                GroupBalanceView(group: group)
+                    .padding(.horizontal)
+                
                 // Expenses
                 GroupExpensesView(
                     expenses: group.expenses,
@@ -50,6 +61,11 @@ struct GroupDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if premiumManager.isPremium {
+                        Button(action: { showingQuickSplit.toggle() }) {
+                            Label("Quick Split", systemImage: "bolt.fill")
+                        }
+                    }
                     Button("Edit Group", action: { showingEditSheet = true })
                     Button("Delete Group", role: .destructive) {
                         showingDeleteAlert = true
@@ -65,11 +81,24 @@ struct GroupDetailView: View {
         .sheet(isPresented: $showingAddExpense) {
             AddExpenseView(group: group)
         }
+        .sheet(isPresented: $showingQuickSplit) {
+            QuickSplitView(group: group)
+        }
         .alert("Delete Group", isPresented: $showingDeleteAlert) {
             Button("Delete", role: .destructive) { deleteGroup() }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Are you sure you want to delete this group? This action cannot be undone.")
+        }
+    }
+    
+    private var groupColor: Color {
+        switch group.color {
+        case "sapphire": return .Brand.sapphire
+        case "emerald": return .Brand.emerald
+        case "amethyst": return .Brand.amethyst
+        case "ruby": return .Brand.ruby
+        default: return .Brand.sapphire
         }
     }
     
@@ -87,15 +116,22 @@ struct GroupMembersView: View {
             Text("Members")
                 .font(.headline)
             
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(members, id: \.self) { member in
-                        Text(member)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.Brand.sapphire.opacity(0.2))
-                            .foregroundStyle(Color.Brand.sapphire)
-                            .clipShape(Capsule())
+            if members.isEmpty {
+                Text("No members yet")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(members, id: \.self) { member in
+                            Text(member)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.Brand.sapphire.opacity(0.2))
+                                .foregroundStyle(Color.Brand.sapphire)
+                                .clipShape(Capsule())
+                        }
                     }
                 }
             }
@@ -128,8 +164,10 @@ struct GroupExpensesView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding()
             } else {
-                ForEach(expenses) { expense in
-                    ExpenseRowView(expense: expense)
+                LazyVStack(spacing: 8) {
+                    ForEach(expenses) { expense in
+                        ExpenseRowView(expense: expense)
+                    }
                 }
             }
         }

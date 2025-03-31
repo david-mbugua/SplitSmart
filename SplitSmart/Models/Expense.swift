@@ -1,55 +1,50 @@
 import SwiftUI
+import Foundation
+import SwiftData
 
-struct Expense: Identifiable {
-    let id = UUID()
-    let category: ExpenseCategory
-    let amount: Double
-    let title: String
-    let date: Date
-    var note: String?
-}
-
-enum ExpenseCategory: String, CaseIterable {
-    case food = "Food & Drinks"
-    case transport = "Transport"
-    case shopping = "Shopping"
-    case entertainment = "Entertainment"
-    case utilities = "Utilities"
-    case other = "Other"
+@Model
+final class Expense: Identifiable {
+    @Attribute(.unique) var id: UUID
+    var amount: Decimal
+    var date: Date
+    var title: String
+    var category: ExpenseCategory
+    var notes: String?
+    var isRecurring: Bool
+    var recurringInterval: RecurringInterval?
+    var splitMembers: [String]?
+    var receiptImageURL: URL?
+    @Relationship(inverse: \Group.expenses) var group: Group?
+    var createdAt: Date
+    var updatedAt: Date
     
-    var icon: Image {
-        Image(systemName: iconName)
-    }
-    
-    private var iconName: String {
-        switch self {
-        case .food: return "fork.knife"
-        case .transport: return "car.fill"
-        case .shopping: return "cart.fill"
-        case .entertainment: return "film.fill"
-        case .utilities: return "bolt.fill"
-        case .other: return "questionmark.circle.fill"
-        }
-    }
-    
-    var color: Color {
-        switch self {
-        case .food: return .emerald
-        case .transport: return .sapphire
-        case .shopping: return .amethyst
-        case .entertainment: return .ruby
-        case .utilities: return .warning
-        case .other: return .textSecondary
-        }
-    }
-    
-    // Mock data for previews
-    static var mockExpenses: [Expense] {
-        [
-            Expense(category: .food, amount: 25.50, title: "Lunch", date: .now),
-            Expense(category: .transport, amount: 35.00, title: "Uber", date: .now),
-            Expense(category: .entertainment, amount: 50.00, title: "Movie Night", date: .now),
-            Expense(category: .shopping, amount: 120.00, title: "Groceries", date: .now)
-        ]
+    init(
+        id: UUID = UUID(),
+        amount: Decimal,
+        date: Date = Date(),
+        title: String,
+        category: ExpenseCategory = .other,
+        notes: String? = nil,
+        isRecurring: Bool = false,
+        recurringInterval: RecurringInterval? = nil,
+        splitMembers: [String]? = nil,
+        receiptImageURL: URL? = nil,
+        group: Group? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.amount = amount
+        self.date = date
+        self.title = title
+        self.category = category
+        self.notes = notes
+        self.isRecurring = isRecurring
+        self.recurringInterval = recurringInterval
+        self.splitMembers = splitMembers
+        self.receiptImageURL = receiptImageURL
+        self.group = group
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 }

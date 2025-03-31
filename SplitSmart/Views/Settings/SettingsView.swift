@@ -13,8 +13,21 @@ struct SettingsView: View {
                         }
                     }
                 }
+                
+                Section("Premium") {
+                    NavigationLink("Premium Features") {
+                        PremiumView()
+                    }
+                }
             }
             .navigationTitle("Settings")
         }
+    }
+}
+
+struct SettingsView_Previews: PreviewProvider {
+    static var previews: some View {
+        SettingsView()
+            .environmentObject(ThemeManager())
     }
 }

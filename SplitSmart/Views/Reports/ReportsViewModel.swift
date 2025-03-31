@@ -10,8 +10,7 @@ class ReportsViewModel {
         self.expenses = expenses
     }
     
-    // MARK: - Summary Statistics
-    
+    // Update value types to be consistent
     var totalSpending: Decimal {
         expenses.reduce(0) { $0 + $1.amount }
     }
@@ -29,8 +28,6 @@ class ReportsViewModel {
             .max(by: { $0.value < $1.value })
     }
     
-    // MARK: - Chart Data
-    
     struct CategorySpending: Identifiable {
         let category: ExpenseCategory
         let amount: Decimal
@@ -45,7 +42,7 @@ class ReportsViewModel {
         
         return groupedExpenses.map { category, expenses in
             let amount = expenses.reduce(0) { $0 + $1.amount }
-            let percentage = total > 0 ? Double(amount as NSDecimalNumber).doubleValue / Double(total as NSDecimalNumber).doubleValue : 0
+            let percentage = total > 0 ? NSDecimalNumber(decimal: amount / total).doubleValue : 0
             return CategorySpending(category: category, amount: amount, percentage: percentage)
         }
         .sorted { $0.amount > $1.amount }
@@ -83,7 +80,7 @@ class ReportsViewModel {
         let previousMonth = monthlySpending[monthlySpending.count - 2].amount
         
         guard previousMonth != 0 else { return 1 }
-        return Double((lastMonth - previousMonth) / previousMonth as NSDecimalNumber)
+        return NSDecimalNumber(decimal: (lastMonth - previousMonth) / previousMonth).doubleValue
     }
 }
 

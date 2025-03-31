@@ -1,11 +1,13 @@
 import Foundation
+import SwiftUI
 
-@Observable
-class CurrencyService {
+class CurrencyService: ObservableObject {
     static let shared = CurrencyService()
     
-    var availableCurrencies: [Currency] = []
-    var exchangeRates: [String: Decimal] = [:]
+    @Published var availableCurrencies: [Currency] = []
+    @Published var exchangeRates: [String: Decimal] = [:]
+    @Published var selectedCurrency: String = "USD"
+    
     private var lastFetchedDate: Date?
     
     private init() {
@@ -24,7 +26,7 @@ class CurrencyService {
     @MainActor
     func fetchLatestRates() async throws {
         // TODO: Implement actual API call
-        // For now, using mock data
+        // This would typically fetch real exchange rates
         exchangeRates = [
             "USD": 1.0,
             "EUR": 0.92,

@@ -9,7 +9,7 @@ struct ChallengeDetailView: View {
     
     var progress: Double {
         let totalSaved = challenge.progress.reduce(0) { $0 + $1.amount }
-        return Double(totalSaved / challenge.targetAmount)
+        return NSDecimalNumber(decimal: totalSaved / challenge.targetAmount).doubleValue
     }
     
     var body: some View {
@@ -20,7 +20,7 @@ struct ChallengeDetailView: View {
                     Text(challenge.title)
                         .font(.title2.bold())
                     
-                    Text(challenge.targetAmount, format: .currency(code: "USD"))
+                    Text(challenge.targetAmount as Decimal, format: .currency(code: "USD"))
                         .font(.title.bold())
                         .foregroundStyle(Color.Brand.emerald)
                     

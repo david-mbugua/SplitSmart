@@ -1,12 +1,11 @@
 import Foundation
-import StoreKit
+import SwiftUI
 
-@Observable
-class PremiumManager {
+class PremiumManager: ObservableObject {
     static let shared = PremiumManager()
     
-    var isPremium: Bool = false // Replace with actual StoreKit integration
-    var features: [PremiumFeature] = PremiumFeature.allFeatures
+    @Published var isPremium: Bool = false
+    @Published var features: [PremiumFeature] = PremiumFeature.allFeatures
     
     private init() {}
     

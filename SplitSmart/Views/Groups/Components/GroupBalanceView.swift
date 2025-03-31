@@ -1,15 +1,25 @@
 import SwiftUI
+import SwiftData
 
 struct GroupBalanceView: View {
     let group: Group
-    @State private var showingSettlements = false
+    @StateObject private var premiumManager = PremiumManager.shared
     
-    var balances: [Balance] {
+    @State private var showingSettlements = false
+    @State private var selectedSettlement: Settlement?
+    @State private var animateBalances = false
+    
+    private var balances: [Balance] {
         calculateBalances()
+            .sorted { abs($0.netBalance) > abs($1.netBalance) }
     }
     
-    var settlements: [Settlement] {
+    private var settlements: [Settlement] {
         calculateSettlements()
+    }
+    
+    private var hasBalances: Bool {
+        balances.contains { $0.netBalance != 0 }
     }
     
     var body: some View {
@@ -19,21 +29,29 @@ struct GroupBalanceView: View {
                 Text("Balances")
                     .font(.headline)
                 Spacer()
-                Button(action: { showingSettlements.toggle() }) {
-                    Label("Settle Up", systemImage: "arrow.left.arrow.right")
-                        .font(.subheadline)
+                if hasBalances {
+                    Button(action: { showingSettlements.toggle() }) {
+                        Label("Settle Up", systemImage: "arrow.left.arrow.right")
+                            .font(.subheadline)
+                    }
+                    .disabled(!premiumManager.isPremium)
                 }
             }
             
             // Individual Balances
-            ForEach(balances) { balance in
-                HStack {
-                    Text(balance.member)
-                    Spacer()
-                    Text(balance.formattedNetBalance)
-                        .foregroundStyle(balance.isPositive ? Color.Status.success : Color.Status.error)
+            if balances.isEmpty {
+                Text("No balances to show")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding()
+            } else {
+                ForEach(balances) { balance in
+                    BalanceRowView(balance: balance)
+                        .opacity(animateBalances ? 1 : 0)
+                        .offset(x: animateBalances ? 0 : -20)
+                        .animation(.easeOut(duration: 0.3).delay(Double(balances.firstIndex(where: { $0.id == balance.id }) ?? 0) * 0.1),
+                                 value: animateBalances)
                 }
-                .padding(.vertical, 4)
             }
         }
         .padding()
@@ -42,6 +60,12 @@ struct GroupBalanceView: View {
         .sheet(isPresented: $showingSettlements) {
             SettlementView(settlements: settlements)
         }
+        .sheet(item: $selectedSettlement) { settlement in
+            SettlePaymentView(settlement: settlement)
+        }
+        .onAppear {
+            animateBalances = true
+        }
     }
     
     private func calculateBalances() -> [Balance] {
@@ -49,7 +73,11 @@ struct GroupBalanceView: View {
         
         // Initialize balances for all members
         for member in group.members {
-            memberBalances[member] = Balance(member: member, paid: 0, owes: 0)
+            memberBalances[member] = Balance(
+                member: member,
+                paid: 0,
+                owes: 0
+            )
         }
         
         // Calculate paid amounts and owed amounts
@@ -61,19 +89,11 @@ struct GroupBalanceView: View {
             let splitAmount = amount / Decimal(splitCount)
             
             // Add to payer's paid amount
-            if var payerBalance = memberBalances[payer] {
-                payerBalance.paid += amount
-                memberBalances[payer] = payerBalance
-            }
+            memberBalances[payer]?.paid += amount
             
             // Add to others' owed amounts
-            for member in (expense.splitMembers ?? []) {
-                if member != payer {
-                    if var memberBalance = memberBalances[member] {
-                        memberBalance.owes += splitAmount
-                        memberBalances[member] = memberBalance
-                    }
-                }
+            for member in (expense.splitMembers ?? []) where member != payer {
+                memberBalances[member]?.owes += splitAmount
             }
         }
         
@@ -87,18 +107,14 @@ struct GroupBalanceView: View {
         // Sort balances by net amount (descending)
         balances.sort { $0.netBalance > $1.netBalance }
         
-        var i = 0
-        var j = balances.count - 1
+        var creditors = balances.filter { $0.netBalance > 0 }
+        var debtors = balances.filter { $0.netBalance < 0 }
         
-        while i < j {
-            let creditor = balances[i]
-            let debtor = balances[j]
+        while !creditors.isEmpty && !debtors.isEmpty {
+            let creditor = creditors[0]
+            let debtor = debtors[0]
             
-            if creditor.netBalance <= 0 || debtor.netBalance >= 0 {
-                break
-            }
-            
-            let settlementAmount = min(abs(debtor.netBalance), creditor.netBalance)
+            let settlementAmount = min(creditor.netBalance, abs(debtor.netBalance))
             
             if settlementAmount > 0 {
                 settlements.append(Settlement(
@@ -108,16 +124,38 @@ struct GroupBalanceView: View {
                 ))
             }
             
-            if abs(debtor.netBalance) == creditor.netBalance {
-                i += 1
-                j -= 1
-            } else if abs(debtor.netBalance) < creditor.netBalance {
-                j -= 1
+            if creditor.netBalance == settlementAmount {
+                creditors.removeFirst()
             } else {
-                i += 1
+                var updatedCreditor = creditor
+                updatedCreditor.paid -= settlementAmount
+                creditors[0] = updatedCreditor
+            }
+            
+            if abs(debtor.netBalance) == settlementAmount {
+                debtors.removeFirst()
+            } else {
+                var updatedDebtor = debtor
+                updatedDebtor.owes -= settlementAmount
+                debtors[0] = updatedDebtor
             }
         }
         
         return settlements
+    }
+}
+
+struct BalanceRowView: View {
+    let balance: Balance
+    
+    var body: some View {
+        HStack {
+            Text(balance.member)
+            Spacer()
+            Text(balance.formattedNetBalance)
+                .foregroundStyle(balance.isPositive ? Color.Status.success : Color.Status.error)
+                .fontWeight(.medium)
+        }
+        .padding(.vertical, 4)
     }
 }

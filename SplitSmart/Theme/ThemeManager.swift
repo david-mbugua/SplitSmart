@@ -9,10 +9,15 @@ enum ThemeMode: String, CaseIterable {
 }
 
 class ThemeManager: ObservableObject {
-    @AppStorage("selectedTheme") private var selectedTheme: ThemeMode = .dark
+    @AppStorage("selectedTheme") private var themeString: String = ThemeMode.dark.rawValue
+    @Published var selectedTheme: ThemeMode
     @Published var colorScheme: ColorScheme = .dark
     
     init() {
+        selectedTheme = .dark
+        if let storedTheme = ThemeMode(rawValue: themeString) {
+            selectedTheme = storedTheme
+        }
         updateColorScheme()
     }
     
@@ -21,19 +26,19 @@ class ThemeManager: ObservableObject {
         updateColorScheme()
     }
     
-    private func updateColorScheme() {
+    func updateColorScheme() {
         switch selectedTheme {
         case .dark:
             colorScheme = .dark
         case .light:
             colorScheme = .light
         case .system:
-            colorScheme = .current
+            colorScheme = UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
         }
     }
 }
 
-private extension ColorScheme {
+extension ColorScheme {
     static var current: ColorScheme {
         UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
     }

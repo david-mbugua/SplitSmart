@@ -1,7 +1,6 @@
 import Foundation
 
-// CHANGE: Add CaseIterable protocol
-enum RecurringInterval: String, CaseIterable {
+enum RecurringInterval: String, CaseIterable, Codable {
     case daily = "daily"
     case weekly = "weekly"
     case monthly = "monthly"
